@@ -2,7 +2,6 @@ import math
 import os
 import shutil
 import time
-import threading
 
 import cv2 as cv
 import keyboard
@@ -149,9 +148,9 @@ def get_window_pos(name):
         return win32gui.GetWindowRect(handle), handle
 
 
-def move_files(data_folder, target_folder, suffix_list=[]):
+def move_files(original_folder, target_folder, suffix_list=[]):
     data_list = []
-    dir_list = os.listdir(data_folder)
+    dir_list = os.listdir(original_folder)
     if len(suffix_list) == 0:
         data_list = dir_list
     else:
@@ -169,38 +168,39 @@ def move_files(data_folder, target_folder, suffix_list=[]):
     target_folder_new = os.path.join(target_folder, cur_time)
     os.mkdir(target_folder_new)
     for file_name in data_list:
-        source = os.path.join(data_folder, file_name)
+        source = os.path.join(original_folder, file_name)
         destination = os.path.join(target_folder_new, file_name)
         shutil.move(source, destination)
 
 
 # need change
-def running_program(window_name, cycle_number=-1):
+def running_program(window_name, original_folder, target_folder, cycle_number=-1, suffix_list=[]):
     exit_flag = False
-    def check_exit():
+    def on_key_event(event):
         nonlocal exit_flag
-        keyboard.wait("q")
-        logger.info("terminated by user")
-        exit_flag = True
+        if event.name == 'q':
+            logger.info("terminated by user")
+            exit_flag = True
+
+    keyboard.on_press(on_key_event)
 
     app = WinGUI(window_name)
     logger.info(window_name)
-
-    exit_thread = threading.Thread(target=check_exit)
-    exit_thread.start()
     
     cycle_count = 0
     while not exit_flag:
         try:
             if is_test_over(app):
-                move_files(data_folder, target_folder, [])
-                cycle_count += 1
+                move_files(original_folder, target_folder, suffix_list)
                 logger.info(f"Cycle {cycle_count} is finished")
                 if cycle_number > 0 and cycle_count >= cycle_number:
                     logger.info(f"finished {cycle_count} cycles!")
                     return
+                cycle_count += 1
                 # write your operations
                 # usually use app functions
+
+                # operation end
         except Exception as err:
             logger.info(err)
 
@@ -211,8 +211,6 @@ def running_program(window_name, cycle_number=-1):
             print()
         
         time.sleep(1)
-    
-    exit_thread.join()
 
 
 # need change
@@ -238,13 +236,14 @@ if __name__ == "__main__":
     
     # ---------- need change -------------
     # original data folder
-    data_folder = "C:/Users/Public/Documents/Data"
+    original_folder = "C:/Users/Public/Documents/Data"
     # target data folder
     target_folder = r"C:\Users\Joey\Desktop\data"
+    suffix_list = []
 
     window_name = "window name of your application"
     # cycle_number = -1 means infinite loop
     cycle_number = -1
     # ------------------------------------
 
-    running_program(window_name, cycle_number)
+    running_program(window_name, original_folder, target_folder, cycle_number, suffix_list)
